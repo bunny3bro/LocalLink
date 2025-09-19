@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="icon" type="image/x-icon" href="locallink.ico">
+  <title>LocalLink - Dealer Dashboard</title>
+  <style>
+    /* ========== Theme variables ========== */
+    :root{
+      --bg:#f9fafb; --card:#ffffff; --text:#1f2937; --muted:#555;
+      --accent:#4f46e5; --nav-bg:rgba(255,255,255,0.95); --footer-bg:#1e293b;
+      --danger:#ef4444; --shadow:0 4px 12px rgba(0,0,0,0.08);
+    }
+    .dark {
+      --bg:#0b1220; --card:#0f1724; --text:#e6eef8; --muted:#9aa7bd;
+      --accent:#8b5cf6; --nav-bg:rgba(8,10,18,0.85); --footer-bg:#071029;
+      --danger:#ef6666; --shadow:0 6px 18px rgba(0,0,0,0.6);
+    }
+
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:"Segoe UI",Tahoma,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;transition:background .25s,color .25s}
+    .container{max-width:1200px;margin:0 auto;padding:0 20px}
+
+    /* Navbar */
+    .navbar{position:fixed;top:0;width:100%;background:var(--nav-bg);border-bottom:1px solid rgba(0,0,0,.06);z-index:1000;backdrop-filter:blur(6px)}
+    .nav-container{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;gap:12px}
+    .nav-brand h2{color:var(--accent);font-weight:800;font-size:1.1rem;display:flex;gap:8px;align-items:center}
+    .nav-link{text-decoration:none;color:var(--text);font-weight:600}
+    .nav-link:hover{color:var(--accent)}
+    .nav-menu{display:flex;gap:12px;align-items:center}
+    .btn-logout{background:var(--danger);color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-weight:600;transition:transform .12s}
+    .btn-logout:hover{transform:translateY(-2px)}
+
+    /* Toggle */
+    .toggle{width:50px;height:26px;border-radius:999px;border:2px solid var(--accent);background:var(--card);
+      display:flex;align-items:center;justify-content:flex-start;cursor:pointer;font-size:16px;padding:0 4px;overflow:hidden;transition:background .2s}
+    .toggle span{display:inline-block;width:20px;height:25px;transition:transform .3s}
+    .toggle.dark span{transform:translateX(22px)}
+
+    /* Hero */
+    .hero{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:40vh;display:flex;align-items:center;color:#fff;
+      margin-top:64px;padding:2.5rem;border-bottom-left-radius:20px;border-bottom-right-radius:20px}
+    .hero-title{font-size:2.2rem;font-weight:800;margin-bottom:.6rem}
+    .hero-subtitle{font-size:1.05rem;opacity:.95}
+
+    /* Search */
+    .search-box{text-align:center;margin:2rem 0;display:flex;justify-content:center}
+    .search-box input{width:60%;padding:12px 16px;border:2px solid rgba(0,0,0,.06);border-radius:25px 0 0 25px;outline:none;background:var(--card);color:var(--text)}
+    .search-box button{padding:12px 20px;border:none;background:var(--accent);color:#fff;border-radius:0 25px 25px 0;cursor:pointer}
+
+    /* Shop Owner Cards */
+    .owner-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.2rem}
+    .owner-card{background:var(--card);padding:1.6rem;border-radius:12px;text-align:center;box-shadow:var(--shadow);
+      transition:transform .18s,border .18s;border:1px solid transparent}
+    .owner-card:hover{transform:translateY(-6px);border-color:var(--accent)}
+    .owner-card h3{margin-bottom:.4rem}
+    .owner-card p{margin-bottom:.9rem;color:var(--muted)}
+    .btn-connect{padding:10px 18px;background:var(--accent);color:#fff;border:none;border-radius:999px;cursor:pointer;font-weight:600;transition:transform .12s}
+    .btn-connect:hover{transform:translateY(-3px)}
+    .btn-add{padding:10px 16px;background:transparent;border:2px dashed rgba(0,0,0,.06);border-radius:10px;cursor:pointer}
+
+    /* Bulk Orders */
+    .orders-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.2rem;margin-top:1rem}
+    .order-card{background:var(--card);padding:1rem 1.2rem;border-radius:10px;box-shadow:var(--shadow)}
+    .order-card h4{margin-bottom:.4rem}
+    .order-card p{margin-bottom:.3rem;color:var(--muted)}
+    .order-actions{margin-top:.8rem;display:flex;gap:8px}
+    .btn-accept{background:#16a34a;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer}
+    .btn-reject{background:var(--danger);color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer}
+
+    /* Modal */
+    .modal{display:none;position:fixed;z-index:2000;left:0;top:0;width:100%;height:100%;background:rgba(2,6,23,.45);align-items:center;justify-content:center}
+    .modal.open{display:flex}
+    .modal-content{background:var(--card);margin:auto;padding:1.4rem;border-radius:12px;width:92%;max-width:420px;position:relative;box-shadow:0 12px 36px rgba(2,6,23,.6)}
+    .close{position:absolute;top:10px;right:14px;font-size:22px;cursor:pointer;color:var(--muted)}
+    .modal-content input{width:100%;padding:10px;margin:8px 0;border:1px solid rgba(0,0,0,.08);border-radius:8px;background:transparent;color:var(--text)}
+
+    /* Footer */
+    .footer{background:var(--footer-bg);color:#fff;padding:2.5rem 0 1rem;margin-top:2.5rem;border-top-left-radius:10px;border-top-right-radius:10px}
+    .footer-content{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1.2rem;margin-bottom:1rem}
+    .footer-section a{display:block;color:#94a3b8;text-decoration:none;margin-bottom:.5rem}
+    .footer-bottom{text-align:center;padding-top:1rem;border-top:1px solid rgba(255,255,255,.04);color:#94a3b8}
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="nav-container container">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="nav-brand"><h2>🔗 LocalLink</h2></div>
+        <a href="index.html" class="nav-link">Home</a>
+      </div>
+      <div class="nav-menu">
+        <div class="theme-toggle" title="Toggle dark mode">
+          <div id="themeToggle" class="toggle" role="button" aria-pressed="false" tabindex="0">
+            <span id="toggleIcon">☀️</span>
+          </div>
+        </div>
+        <button class="btn-logout" onclick="logout()">Logout</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <header class="hero">
+    <div class="hero-content">
+      <h1 class="hero-title">🚚 Dealer Dashboard</h1>
+      <p class="hero-subtitle">Manage connections and receive bulk orders from shop owners.</p>
+    </div>
+  </header>
+
+  <!-- Search -->
+  <section class="container">
+    <div class="search-box">
+      <input type="text" id="ownerSearch" placeholder="Search shop owners..." oninput="searchOwners()" />
+      <button onclick="searchOwners()">Search</button>
+    </div>
+  </section>
+
+  <!-- Shop Owners -->
+  <section class="container" style="padding:1.2rem 0 2.2rem;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h2>📋 Shop Owners</h2>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-connect" onclick="openRequestAll()">Request All Visible</button>
+        <button class="btn-add" onclick="openModal()">➕ Add Shop Owner</button>
+      </div>
+    </div>
+    <div class="owner-grid" id="ownerGrid">
+      <div class="owner-card"><h3>🛒 Sunrise Grocers</h3><p>Grocery & essentials</p><button class="btn-connect" onclick="connectOwner('Sunrise Grocers')">Request</button></div>
+      <div class="owner-card"><h3>🏪 Ram & Sons Kirana</h3><p>General store</p><button class="btn-connect" onclick="connectOwner('Ram & Sons Kirana')">Request</button></div>
+      <div class="owner-card"><h3>🍎 Fresh Corner Fruits</h3><p>Fruits & Vegetables</p><button class="btn-connect" onclick="connectOwner('Fresh Corner Fruits')">Request</button></div>
+      <div class="owner-card"><h3>💊 Neighborhood Pharmacy</h3><p>Medicines</p><button class="btn-connect" onclick="connectOwner('Neighborhood Pharmacy')">Request</button></div>
+      <div class="owner-card"><h3>📱 Gadget Hub Shop</h3><p>Electronics</p><button class="btn-connect" onclick="connectOwner('Gadget Hub Shop')">Request</button></div>
+    </div>
+  </section>
+
+  <!-- Bulk Orders -->
+  <section class="container" style="padding:1.2rem 0 2.2rem;">
+    <h2>📦 Bulk Orders from Shop Owners</h2>
+    <div class="orders-grid" id="ordersGrid">
+      <div class="order-card">
+        <h4>🛒 Sunrise Grocers</h4>
+        <p>Order: 20kg Rice, 50L Oil</p>
+        <p>Status: Pending</p>
+        <div class="order-actions">
+          <button class="btn-accept" onclick="acceptOrder(this)">Accept</button>
+          <button class="btn-reject" onclick="rejectOrder(this)">Reject</button>
+        </div>
+      </div>
+      <div class="order-card">
+        <h4>🍎 Fresh Corner Fruits</h4>
+        <p>Order: 30kg Apples, 10kg Bananas</p>
+        <p>Status: Pending</p>
+        <div class="order-actions">
+          <button class="btn-accept" onclick="acceptOrder(this)">Accept</button>
+          <button class="btn-reject" onclick="rejectOrder(this)">Reject</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Add Shop Owner Modal -->
+  <div id="ownerModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeModal()">&times;</span>
+      <h3>Add New Shop Owner</h3>
+      <input type="text" id="ownerName" placeholder="Shop Name" />
+      <input type="text" id="ownerDesc" placeholder="Description" />
+      <button class="btn-connect" onclick="addOwner()">Add</button>
+    </div>
+  </div>
+
+  <!-- Confirm Modal -->
+  <div id="confirmModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeConfirm()">&times;</span>
+      <h3 id="confirmTitle">Send Connection Request</h3>
+      <p id="confirmBody">Are you sure?</p>
+      <div style="display:flex;gap:10px;margin-top:12px;justify-content:flex-end;">
+        <button class="btn-add" onclick="closeConfirm()">Cancel</button>
+        <button class="btn-connect" onclick="confirmSend()">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-content">
+        <div class="footer-section"><h3>🔗 LocalLink</h3><p>Connecting communities, one link at a time.</p></div>
+        <div class="footer-section"><h4>Quick Links</h4><a href="index.html">Home</a><a href="analytics.html">Analytics</a></div>
+        <div class="footer-section"><h4>For Businesses</h4><a href="shop.html">Shop Owners</a><a href="dealer.html">Dealers</a></div>
+      </div>
+      <div class="footer-bottom"><p>&copy; 2025 LocalLink. All rights reserved.</p></div>
+    </div>
+  </footer>
+
+  <script>
+    /* Theme */
+    const themeToggle=document.getElementById('themeToggle');const body=document.body;const icon=document.getElementById('toggleIcon');
+    function applyTheme(isDark){if(isDark){body.classList.add('dark');themeToggle.classList.add('dark');themeToggle.setAttribute('aria-pressed','true');icon.textContent='🌙';}else{body.classList.remove('dark');themeToggle.classList.remove('dark');themeToggle.setAttribute('aria-pressed','false');icon.textContent='☀️';}}
+    (function(){const saved=localStorage.getItem('localLinkTheme');if(saved==='dark')applyTheme(true);else if(saved==='light')applyTheme(false);else applyTheme(window.matchMedia('(prefers-color-scheme: dark)').matches);})();
+    themeToggle.addEventListener('click',()=>{const isDark=body.classList.contains('dark');applyTheme(!isDark);localStorage.setItem('localLinkTheme',!isDark?'dark':'light');});
+
+    /* Shop Owners */
+    const ownerModal=document.getElementById('ownerModal');const confirmModal=document.getElementById('confirmModal');let pendingTarget=null;
+    function openModal(){ownerModal.classList.add('open');}function closeModal(){ownerModal.classList.remove('open');}
+    function openConfirm(name){pendingTarget=name;document.getElementById('confirmTitle').innerText=`Send Request to "${name}"`;document.getElementById('confirmBody').innerText=`This will notify "${name}". Continue?`;confirmModal.classList.add('open');}
+    function closeConfirm(){confirmModal.classList.remove('open');pendingTarget=null;}
+    function addOwner(){const n=document.getElementById('ownerName').value.trim();const d=document.getElementById('ownerDesc').value.trim();if(!n||!d){alert('Fill all fields');return;}const grid=document.getElementById('ownerGrid');const card=document.createElement('div');card.className='owner-card';card.innerHTML=`<h3>🏬 ${n}</h3><p>${d}</p><button class="btn-connect" onclick="connectOwner('${n}')">Request</button>`;grid.appendChild(card);document.getElementById('ownerName').value='';document.getElementById('ownerDesc').value='';closeModal();}
+    function searchOwners(){const q=document.getElementById('ownerSearch').value.toLowerCase();document.querySelectorAll('.owner-card').forEach(c=>{const t=c.querySelector('h3').innerText.toLowerCase();const d=c.querySelector('p').innerText.toLowerCase();c.style.display=(t.includes(q)||d.includes(q))?'block':'none';});}
+    function connectOwner(name){openConfirm(name);}function confirmSend(){if(!pendingTarget){closeConfirm();return;}alert('✅ Request sent to '+pendingTarget);closeConfirm();}
+    function openRequestAll(){const visible=[...document.querySelectorAll('.owner-card')].filter(c=>c.style.display!=='none');if(!visible.length){alert('No visible shop owners');return;}visible.forEach(c=>console.log('Requested',c.querySelector('h3').innerText));alert('✅ Requests sent to all visible');}
+
+    /* Bulk Orders */
+    function acceptOrder(btn){const card=btn.closest('.order-card');card.querySelector('p:nth-of-type(2)').innerText='Status: ✅ Accepted';}
+    function rejectOrder(btn){const card=btn.closest('.order-card');card.querySelector('p:nth-of-type(2)').innerText='Status: ❌ Rejected';}
+
+    /* Logout */
+    function logout(){if(confirm('Logout?'))window.location.href='index.html';}
+    window.addEventListener('click',e=>{if(e.target===ownerModal)closeModal();if(e.target===confirmModal)closeConfirm();});
+  </script>
+</body>
+</html>

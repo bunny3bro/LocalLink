@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="icon" type="image/x-icon" href="locallink.ico">
+  <title>LocalLink - Shop Owner Dashboard (Upgraded)</title>
+
+  <!-- QR library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <style>
+    :root{
+      --bg:#f9fafb; --card:#fff; --muted:#6b7280; --accent:#4f46e5; --danger:#ef4444; --surface-border:#e6eef8;
+      --glass: rgba(255,255,255,0.6);
+    }
+    [data-theme="dark"]{
+      --bg:#0f1724; --card:#0b1220; --muted:#9ca3af; --accent:#7c3aed; --danger:#ef4444; --surface-border:#0f1728;
+      color: #e6eef8;
+    }
+
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Inter,Segoe UI,Arial; background:var(--bg); color: #0f1724; line-height:1.4; padding-bottom:80px;}
+    [data-theme="dark"] body{color:var(--muted);}
+
+    .container{max-width:1200px;margin:0 auto;padding:20px}
+
+    /* Navbar */
+    .navbar{position:sticky;top:0;background:var(--card);border-bottom:1px solid var(--surface-border);backdrop-filter:blur(6px);z-index:1000}
+    .nav-inner{display:flex;align-items:center;justify-content:space-between;padding:14px 20px}
+    .brand{display:flex;gap:12px;align-items:center}
+    .brand h2{color:var(--accent);font-size:20px;margin:0}
+    .nav-actions{display:flex;gap:10px;align-items:center}
+    .btn{padding:8px 12px;border-radius:8px;border:none;background:transparent;cursor:pointer;font-weight:600}
+    .btn-primary{background:var(--accent);color:white}
+    .btn-outline{border:1px solid var(--accent);color:var(--accent)}
+    .btn-danger{background:var(--danger);color:white}
+
+    /* Dark mode toggle switch */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 46px;
+      height: 24px;
+    }
+    .switch input {opacity:0;width:0;height:0;}
+    .slider {
+      position:absolute;
+      cursor:pointer;
+      top:0; left:0; right:0; bottom:0;
+      background-color:#ccc;
+      transition:.4s;
+      border-radius:34px;
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.12);
+    }
+    .slider:before {
+      position:absolute;
+      content:"";
+      height:18px; width:18px;
+      left:3px; bottom:3px;
+      background-color:white;
+      transition:.4s;
+      border-radius:50%;
+      box-shadow: 0 2px 6px rgba(2,6,23,0.12);
+    }
+    .switch input:checked + .slider { background-color: var(--accent); }
+    .switch input:checked + .slider:before { transform: translateX(22px); }
+
+    /* Header / hero */
+    .hero{display:flex;gap:20px;align-items:center;padding:20px;margin-top:14px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;border-radius:12px}
+    .hero h1{font-size:22px;margin:0}
+    .hero p{margin:2px 0 0 0;opacity:0.95}
+
+    /* Analytics cards */
+    .cards{display:flex;gap:14px;margin-top:18px;flex-wrap:wrap}
+    .card{flex:1;padding:14px;border-radius:12px;background:var(--card);box-shadow:0 6px 18px rgba(2,6,23,0.06);border:1px solid var(--surface-border)}
+    .card h3{margin:0 0 6px 0}
+    .card p{margin:0;color:var(--muted);font-weight:700}
+
+    /* Top controls */
+    .controls{display:flex;gap:12px;align-items:center;margin-top:18px;flex-wrap:wrap}
+    .search{flex:1;display:flex;gap:8px}
+    .search input{flex:1;padding:10px;border-radius:8px;border:1px solid #cbd5e1}
+    .select, .small-input{padding:10px;border-radius:8px;border:1px solid #cbd5e1}
+
+    /* Inventory table */
+    .table-wrap{margin-top:16px;background:var(--card);border-radius:12px;padding:12px;border:1px solid var(--surface-border);overflow:auto}
+    table{width:100%;border-collapse:collapse;font-size:14px}
+    th, td{padding:10px;text-align:left;border-bottom:1px solid #eef2f7}
+    th{cursor:pointer;user-select:none;color:var(--muted)}
+    tr.lowstock{background: linear-gradient(90deg, rgba(255,250,232,0.8), rgba(255,244,229,0.6));}
+    td img.thumb{width:48px;height:48px;border-radius:8px;object-fit:cover;border:1px solid #e6eef8}
+
+    /* Modal */
+    .modal{position:fixed;left:0;top:0;width:100%;height:100%;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,0.48);z-index:2000}
+    .modal.show{display:flex}
+    .modal-card{width:100%;max-width:520px;background:var(--card);padding:18px;border-radius:12px;border:1px solid var(--surface-border)}
+    .form-row{display:flex;gap:8px;margin-bottom:10px}
+    .form-row input[type="text"], .form-row input[type="number"], textarea, select{flex:1;padding:10px;border-radius:8px;border:1px solid #cbd5e1}
+    .form-row label{font-size:13px;color:var(--muted);margin-bottom:6px;display:block}
+
+    /* Dealer grid */
+    .dealer-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:18px}
+    .dealer-card{background:var(--card);padding:12px;border-radius:12px;border:1px solid var(--surface-border)}
+    .dealer-card h4{margin-bottom:6px}
+    .dealer-meta{color:var(--muted);font-size:13px;margin-bottom:8px}
+
+    /* Pre-orders section */
+    .qr-section{margin-top:18px;background:var(--card);padding:14px;border-radius:12px;border:1px solid var(--surface-border)}
+    .qr-grid{display:grid;grid-template-columns:1fr 280px;gap:12px}
+    .preorders-table{margin-top:12px;border-radius:8px;overflow:auto;border:1px solid #eef2f7}
+    .preorders-table table{width:100%;border-collapse:collapse}
+    .preorders-table th,.preorders-table td{padding:8px;border-bottom:1px solid #eef2f7;font-size:13px}
+
+    #qrcode{display:inline-block;padding:10px;background:white;border-radius:8px;text-align:center}
+
+    /* footer */
+    footer{margin-top:24px;padding:20px;color:var(--muted);text-align:center}
+
+    /* small helpers */
+    .tiny{font-size:12px;color:white }
+    .flex{display:flex;gap:8px;align-items:center}
+    .right{margin-left:auto}
+    .muted{color:var(--muted)}
+
+    @media (max-width:920px){
+      .qr-grid{grid-template-columns:1fr}
+      .dealer-grid{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body data-theme="light">
+  <nav class="navbar">
+    <div class="nav-inner container">
+      <div class="brand">
+        <div style="font-size:20px">🔗</div>
+        <div>
+          <h2>LocalLink</h2>
+          <div class="tiny muted">Shop Owner Dashboard</div>
+        </div>
+      </div>
+
+      <div class="nav-actions">
+        <label class="switch" title="Toggle dark mode">
+          <input id="darkToggle" type="checkbox" /><span class="slider">🌙☀️</span>
+        </label>
+        <button class="btn btn-outline" onclick="logout()">Logout</button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container">
+    <header class="hero">
+      <div>
+        <h1>🏪 Manage your shop</h1>
+        <p>Inventory, Pre-orders, dealer connections & analytics — all in one place.</p>
+      </div>
+      <div style="margin-left:auto;text-align:right">
+        <div class="tiny">Last saved: <span id="lastSaved">Never</span></div>
+        <button class="btn btn-primary" onclick="openProductModal()">➕ Add Product</button>
+      </div>
+    </header>
+
+    <!-- analytics -->
+    <section class="cards" aria-label="analytics">
+      <div class="card">
+        <h3 id="statProducts">0</h3>
+        <p>Total products</p>
+      </div>
+      <div class="card">
+        <h3 id="statStock">0</h3>
+        <p>Total stock units</p>
+      </div>
+      <div class="card">
+        <h3 id="statValue">₹0</h3>
+        <p>Estimated inventory value</p>
+      </div>
+    </section>
+
+    <!-- controls -->
+    <section class="controls">
+      <div class="search" style="min-width:200px;flex:2">
+        <input id="searchInput" placeholder="Search product name..." oninput="renderTable()" />
+        <select id="filterSelect" class="select" onchange="renderTable()">
+          <option value="all">All products</option>
+          <option value="low">Low stock (&lt;5)</option>
+        </select>
+      </div>
+
+      <div class="flex" style="flex:1;justify-content:flex-end">
+        <input id="minPrice" class="small-input" type="number" placeholder="Min price" style="width:120px" />
+        <input id="maxPrice" class="small-input" type="number" placeholder="Max price" style="width:120px" />
+        <button class="btn btn-outline" onclick="applyPriceFilter()">Apply</button>
+      </div>
+
+      <div class="flex right">
+        <button class="btn btn-outline" onclick="downloadCSV()">⬆️ Export CSV</button>
+        <label class="btn" style="border:1px dashed #cbd5e1;padding:8px;border-radius:8px;cursor:pointer">
+          ⬇️ Import CSV <input id="csvInput" type="file" accept=".csv" style="display:none" onchange="importCSV(event)" />
+        </label>
+      </div>
+    </section>
+
+    <!-- inventory table -->
+    <section class="table-wrap">
+      <table id="inventoryTable">
+        <thead>
+          <tr>
+            <th data-key="image">Image</th>
+            <th data-key="name" onclick="sortBy('name')">Product ▾</th>
+            <th data-key="stock" onclick="sortBy('stock')">Stock ▾</th>
+            <th data-key="price" onclick="sortBy('price')">Price ▾</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="inventoryBody">
+          <!-- populated dynamically -->
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Pre-orders & Dealer -->
+    <section class="qr-section" aria-label="preorders">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <h3>📝 Pre-Orders</h3>
+          <div class="tiny muted">Create pre-orders for customers; generate a QR containing order details.</div>
+        </div>
+        <div class="flex" style="gap:6px">
+          <button class="btn btn-outline" onclick="exportPreordersCSV()">Export Pre-orders</button>
+          <button class="btn" onclick="clearPreordersConfirm()">Clear Pre-orders</button>
+        </div>
+      </div>
+
+      <div class="qr-grid" style="margin-top:12px">
+        <!-- left: form + list -->
+        <div>
+          <div class="form-row" style="margin-bottom:8px">
+            <input id="custName" type="text" placeholder="Customer Name" />
+            <input id="custProduct" type="text" placeholder="Product Name" />
+          </div>
+          <div class="form-row" style="margin-bottom:8px">
+            <input id="custQty" type="number" min="1" placeholder="Quantity" />
+            <input id="custPhone" type="text" placeholder="Phone (optional)" />
+          </div>
+          <div class="form-row" style="margin-bottom:8px">
+            <input id="custNote" type="text" placeholder="Note (optional)" />
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn btn-primary" onclick="createPreorder()">Create & Save Pre-order</button>
+            <button class="btn" onclick="generatePreorderQRFromInputs()">Generate QR (no save)</button>
+            <button class="btn btn-outline" onclick="downloadQR()" id="downloadQRBtn" style="display:none">Download QR</button>
+          </div>
+
+          <!-- Pre-orders table -->
+          <div class="preorders-table" id="preordersTableWrap" style="margin-top:12px">
+            <table id="preordersTable">
+              <thead>
+                <tr>
+                  <th>When</th>
+                  <th>Customer</th>
+                  <th>Product</th>
+                  <th>Qty</th>
+                  <th>Phone</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="preordersBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- right: qrcode + dealers -->
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="background:var(--card);padding:12px;border-radius:8px;border:1px solid var(--surface-border);min-height:240px;display:flex;flex-direction:column;align-items:center;justify-content:center">
+            <div id="qrcode"></div>
+            <div class="tiny muted" style="margin-top:8px">QR preview (pre-orders)</div>
+            <div style="margin-top:10px">
+              <button class="btn btn-outline" onclick="clearQR()">Clear QR</button>
+            </div>
+          </div>
+
+          <div>
+            <h4 style="margin:0 0 8px 0">🤝 Dealers</h4>
+            <div class="dealer-grid" id="dealerGrid"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+      <div class="tiny muted">Built with ❤️ · LocalLink · &copy; 2025</div>
+    </footer>
+  </main>
+
+  <!-- Product Modal -->
+  <div id="productModal" class="modal" aria-hidden="true">
+    <div class="modal-card">
+      <h3 id="productModalTitle">➕ Add Product</h3>
+      <div style="margin-top:10px">
+        <div class="form-row">
+          <div style="flex:1">
+            <label>Product name</label>
+            <input id="pName" type="text" placeholder="e.g., Rice (5kg)" />
+          </div>
+          <div style="width:120px, left 40px" >
+            <label>Stock</label>
+            <input id="pStock" type="number" min="0" value="1" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div style="flex:1">
+            <label>Price (₹)</label>
+            <input id="pPrice" type="number" min="0" step="0.01" value="0" />
+          </div>
+          <div style="width:160px, left 30px">
+            <label>Low stock threshold</label>
+            <input id="pLowThreshold" type="number" min="0" value="5" />
+          </div>
+        </div>
+
+        <div style="margin-bottom:10px">
+          <label>Image (optional)</label>
+          <input id="pImage" type="file" accept="image/*" />
+          <div style="margin-top:8px"><img id="pPreview" src="" style="max-width:120px;border-radius:8px;display:none" /></div>
+        </div>
+
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+          <button class="btn" onclick="closeProductModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="saveProduct()">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dealer Modal -->
+  <div id="dealerModal" class="modal">
+    <div class="modal-card">
+      <h3 id="dealerName">Dealer</h3>
+      <div style="margin-top:8px" id="dealerDetails"></div>
+
+      <h4 style="margin-top:12px">Place Quick Order</h4>
+      <div class="form-row">
+        <input id="orderProduct" type="text" placeholder="Product name" />
+        <input id="orderQty" type="number" min="1" value="1" style="width:100px" />
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+        <button class="btn" onclick="closeDealerModal()">Close</button>
+        <button class="btn btn-primary" onclick="placeQuickOrder()">Order</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- Storage & initial data model ---
+    const STORAGE_KEY = "locallink_data_v2"; // bump version for new preorders field
+    let data = { inventory: [], dealers: [], preorders: [], lastSaved: null };
+    let sortState = { key: "name", dir: 1 }; // 1 asc, -1 desc
+    let priceFilter = { min: null, max: null };
+
+    // DOM refs
+    const inventoryBody = document.getElementById("inventoryBody");
+    const statProducts = document.getElementById("statProducts");
+    const statStock = document.getElementById("statStock");
+    const statValue = document.getElementById("statValue");
+    const lastSavedEl = document.getElementById("lastSaved");
+    const qrcodeDiv = document.getElementById("qrcode");
+    const downloadQRBtn = document.getElementById("downloadQRBtn");
+    const pImageInput = document.getElementById("pImage");
+    const pPreview = document.getElementById("pPreview");
+    const preordersBody = document.getElementById("preordersBody");
+    const preordersTableWrap = document.getElementById("preordersTableWrap");
+
+    // --- Initial demo data if empty ---
+    function ensureDemoDealers(){
+      if(data.dealers && data.dealers.length) return;
+      data.dealers = [
+        { id: "d1", name: "ABC Wholesale", category: "Groceries & Provisions", phone: "+91-7816050624", email:"abc@dealer.com", address:"Near Market, Block A" },
+        { id: "d2", name: "XYZ Distributors", category: "Dairy & Beverages", phone:"+91-9491859129", email:"xyz@dealer.com", address:"Warehouse Road" }
+      ];
+      saveData();
+    }
+
+    // --- Load / Save ---
+    function loadData(){
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw){
+        try { data = JSON.parse(raw); }
+        catch(e){ console.warn("Failed to parse storage; resetting"); data = { inventory:[], dealers:[], preorders:[], lastSaved:null }; }
+      } else {
+        // initial demo inventory
+        data.inventory = [
+          { id: idGen(), name:"Rice (5kg)", stock:20, price:300, image:"", lowThreshold:5 },
+          { id: idGen(), name:"Sugar (1kg)", stock:15, price:45, image:"", lowThreshold:5 }
+        ];
+      }
+      // ensure arrays exist
+      data.inventory = data.inventory || [];
+      data.dealers = data.dealers || [];
+      data.preorders = data.preorders || [];
+      ensureDemoDealers();
+      updateLastSavedUI();
+    }
+
+    function saveData(){
+      data.lastSaved = new Date().toISOString();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      updateLastSavedUI();
+    }
+
+    function updateLastSavedUI(){
+      if(data.lastSaved) lastSavedEl.textContent = new Date(data.lastSaved).toLocaleString();
+      else lastSavedEl.textContent = "Never";
+    }
+
+    // --- Utilities ---
+    function idGen(){ return 'id_'+Math.random().toString(36).slice(2,9); }
+    function currency(v){ return "₹"+Number(v).toLocaleString('en-IN'); }
+    function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    function notify(title, body){
+      if(!("Notification" in window)) return;
+      if(Notification.permission === "granted"){
+        new Notification(title, { body });
+      } else if(Notification.permission !== "denied"){
+        Notification.requestPermission().then(p => { if(p==="granted") new Notification(title, { body }); });
+      }
+    }
+
+    // --- Rendering Inventory ---
+    function renderTable(){
+      const search = document.getElementById("searchInput").value.trim().toLowerCase();
+      const filter = document.getElementById("filterSelect").value;
+      const minP = priceFilter.min;
+      const maxP = priceFilter.max;
+
+      let items = data.inventory.slice();
+
+      if(search) items = items.filter(it => it.name.toLowerCase().includes(search));
+      if(filter==="low") items = items.filter(it => Number(it.stock) < (it.lowThreshold ?? 5));
+      if(minP !== null) items = items.filter(it => Number(it.price) >= Number(minP));
+      if(maxP !== null) items = items.filter(it => Number(it.price) <= Number(maxP));
+
+      items.sort((a,b)=>{
+        const k = sortState.key;
+        let av = a[k], bv = b[k];
+        if(k === "name"){ av = av.toLowerCase(); bv = bv.toLowerCase(); if(av < bv) return -1*sortState.dir; if(av > bv) return 1*sortState.dir; return 0; }
+        return (Number(av)-Number(bv))*sortState.dir;
+      });
+
+      inventoryBody.innerHTML = "";
+      for(const it of items){
+        const tr = document.createElement("tr");
+        if(Number(it.stock) < (it.lowThreshold ?? 5)) tr.classList.add("lowstock");
+        tr.innerHTML = `
+          <td><img class="thumb" src="${it.image || defaultThumb(it.name)}" alt="img"/></td>
+          <td>${escapeHtml(it.name)}</td>
+          <td>${escapeHtml(String(it.stock))}</td>
+          <td>${currency(it.price)}</td>
+          <td>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button class="btn btn-outline" onclick="openEditModal('${it.id}')">✏️ Edit</button>
+              <button class="btn btn-outline" onclick="deleteProduct('${it.id}')">❌ Delete</button>
+            </div>
+          </td>`;
+        inventoryBody.appendChild(tr);
+      }
+
+      updateStats();
+    }
+
+    function defaultThumb(name){
+      const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><rect width='100%' height='100%' fill='#f3f4f6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='#9ca3af' font-size='14'>${escapeHtml(name.slice(0,10))}</text></svg>`;
+      return 'data:image/svg+xml;charset=utf8,' + encodeURIComponent(svg);
+    }
+
+    function updateStats(){
+      statProducts.textContent = data.inventory.length;
+      const totalStock = data.inventory.reduce((s,i)=>s+Number(i.stock),0);
+      statStock.textContent = totalStock;
+      const value = data.inventory.reduce((s,i)=>s + (Number(i.stock)*Number(i.price)),0);
+      statValue.textContent = currency(value);
+    }
+
+    // --- Product modal CRUD ---
+    let editingId = null;
+    function openProductModal(){
+      editingId = null;
+      document.getElementById("productModalTitle").textContent = "➕ Add Product";
+      document.getElementById("pName").value = "";
+      document.getElementById("pStock").value = 1;
+      document.getElementById("pPrice").value = 0;
+      document.getElementById("pLowThreshold").value = 5;
+      pPreview.style.display = "none"; pPreview.src = "";
+      pImageInput.value = "";
+      document.getElementById("productModal").classList.add("show");
+    }
+
+    function openEditModal(id){
+      const prod = data.inventory.find(x=>x.id===id);
+      if(!prod) return alert("Product not found");
+      editingId = id;
+      document.getElementById("productModalTitle").textContent = "✏️ Edit Product";
+      document.getElementById("pName").value = prod.name;
+      document.getElementById("pStock").value = prod.stock;
+      document.getElementById("pPrice").value = prod.price;
+      document.getElementById("pLowThreshold").value = prod.lowThreshold ?? 5;
+      if(prod.image){ pPreview.src = prod.image; pPreview.style.display = "block"; } else { pPreview.style.display = "none"; }
+      pImageInput.value = "";
+      document.getElementById("productModal").classList.add("show");
+    }
+
+    function closeProductModal(){ document.getElementById("productModal").classList.remove("show"); }
+
+    pImageInput.addEventListener("change", (e)=>{
+      const file = e.target.files[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = () => { pPreview.src = reader.result; pPreview.style.display = "block"; };
+      reader.readAsDataURL(file);
+    });
+
+    function saveProduct(){
+      const name = document.getElementById("pName").value.trim();
+      const stock = Number(document.getElementById("pStock").value);
+      const price = Number(document.getElementById("pPrice").value);
+      const lowThreshold = Number(document.getElementById("pLowThreshold").value);
+
+      if(!name || isNaN(stock) || isNaN(price)){
+        return alert("Please fill valid product details.");
+      }
+
+      const file = pImageInput.files[0];
+      if(file){
+        const reader = new FileReader();
+        reader.onload = () => {
+          const imgData = reader.result;
+          finalizeSave(name, stock, price, lowThreshold, imgData);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        const imgData = pPreview.src && pPreview.style.display!=="none" ? pPreview.src : "";
+        finalizeSave(name, stock, price, lowThreshold, imgData);
+      }
+    }
+
+    function finalizeSave(name, stock, price, lowThreshold, imageData){
+      if(editingId){
+        const idx = data.inventory.findIndex(x=>x.id===editingId);
+        if(idx === -1) return alert("Item not found");
+        data.inventory[idx] = { ...data.inventory[idx], name, stock:Number(stock), price:Number(price), lowThreshold:Number(lowThreshold), image:imageData };
+        saveData();
+        renderTable();
+        closeProductModal();
+        return;
+      }
+
+      const newProd = { id: idGen(), name, stock:Number(stock), price:Number(price), lowThreshold:Number(lowThreshold), image:imageData };
+      data.inventory.push(newProd);
+      saveData();
+      renderTable();
+      closeProductModal();
+
+      if(Number(stock) < Number(lowThreshold)){
+        notify("Low stock alert", `${name} stock is ${stock} (< ${lowThreshold})`);
+      }
+    }
+
+    function deleteProduct(id){
+      if(!confirm("Delete this product?")) return;
+      data.inventory = data.inventory.filter(x=>x.id!==id);
+      saveData();
+      renderTable();
+    }
+
+    // --- Sorting & Filtering ---
+    function sortBy(key){
+      if(sortState.key === key) sortState.dir = -sortState.dir;
+      else { sortState.key = key; sortState.dir = 1; }
+      renderTable();
+    }
+
+    function applyPriceFilter(){
+      const min = document.getElementById("minPrice").value;
+      const max = document.getElementById("maxPrice").value;
+      priceFilter.min = min ? Number(min) : null;
+      priceFilter.max = max ? Number(max) : null;
+      renderTable();
+    }
+
+    // --- CSV Export/Import for inventory ---
+    function downloadCSV(){
+      if(!data.inventory.length) return alert("No products to export.");
+      const rows = [["id","name","stock","price","lowThreshold","imageData"]];
+      for(const it of data.inventory) rows.push([it.id, it.name, it.stock, it.price, it.lowThreshold || 5, it.image ? it.image.replace(/\r?\n/g,"") : ""]);
+      const csv = rows.map(r=>r.map(cell => `"${String(cell).replace(/"/g,'""')}"`).join(",")).join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "inventory_export.csv";
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    function importCSV(ev){
+      const file = ev.target.files[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const txt = reader.result;
+          const rows = parseCSV(txt);
+          const header = rows.shift();
+          const cols = { id: header.indexOf("id"), name: header.indexOf("name"), stock: header.indexOf("stock"), price: header.indexOf("price"), lowThreshold: header.indexOf("lowThreshold"), image: header.indexOf("imageData") };
+          let added = 0;
+          for(const r of rows){
+            const item = {
+              id: r[cols.id] || idGen(),
+              name: r[cols.name] || "Unnamed",
+              stock: Number(r[cols.stock] || 0),
+              price: Number(r[cols.price] || 0),
+              lowThreshold: Number(r[cols.lowThreshold] || 5),
+              image: r[cols.image] || ""
+            };
+            data.inventory.push(item);
+            added++;
+          }
+          saveData();
+          renderTable();
+          alert(`Imported ${added} products.`);
+        } catch(e){
+          alert("Failed to import CSV: " + e.message);
+        }
+      };
+      reader.readAsText(file);
+      ev.target.value = "";
+    }
+
+    function parseCSV(str){
+      const lines = [];
+      let cur = [];
+      let curField = "";
+      let inQuotes = false;
+      for(let i=0;i<str.length;i++){
+        const ch = str[i];
+        const nxt = str[i+1];
+        if(inQuotes){
+          if(ch === '"' && nxt === '"'){ curField += '"'; i++; continue; }
+          if(ch === '"'){ inQuotes = false; continue; }
+          curField += ch;
+        } else {
+          if(ch === '"'){ inQuotes = true; continue; }
+          if(ch === ','){ cur.push(curField); curField = ""; continue; }
+          if(ch === '\n' || ch === '\r'){
+            if(ch === '\r' && str[i+1] === '\n'){ continue; }
+            cur.push(curField);
+            lines.push(cur);
+            cur = [];
+            curField = "";
+            continue;
+          }
+          curField += ch;
+        }
+      }
+      if(curField !== "" || cur.length) { cur.push(curField); lines.push(cur); }
+      if(lines.length && lines[lines.length-1].length === 1 && lines[lines.length-1][0] === "") lines.pop();
+      return lines;
+    }
+
+    // --- QR generation & download (generic) ---
+    let currentQRCode = null;
+    function generateQRFromText(text){
+      if(!text) return alert("No text to generate QR.");
+      qrcodeDiv.innerHTML = "";
+      currentQRCode = new QRCode(qrcodeDiv, { text, width:200, height:200, correctLevel: QRCode.CorrectLevel.H });
+      setTimeout(()=> { downloadQRBtn.style.display = "inline-block"; }, 250);
+    }
+
+    function downloadQR(){
+      const img = qrcodeDiv.querySelector("img");
+      if(img && img.src){
+        const a = document.createElement("a");
+        a.href = img.src;
+        a.download = "qrcode.png";
+        a.click();
+        return;
+      }
+      const table = qrcodeDiv.querySelector("table");
+      if(table){
+        const size = 260;
+        const canvas = document.createElement("canvas");
+        canvas.width = canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#fff"; ctx.fillRect(0,0,size,size);
+        const cells = table.querySelectorAll("td");
+        const n = Math.sqrt(cells.length);
+        const cellSize = Math.floor(size / n);
+        for(let i=0;i<cells.length;i++){
+          const row = Math.floor(i / n), col = i % n;
+          if(cells[i].style.backgroundColor === "black"){
+            ctx.fillStyle = "#000";
+            ctx.fillRect(col*cellSize, row*cellSize, cellSize, cellSize);
+          }
+        }
+        const a = document.createElement("a");
+        a.href = canvas.toDataURL("image/png");
+        a.download = "qrcode.png";
+        a.click();
+      } else {
+        alert("No QR to download.");
+      }
+    }
+
+    function clearQR(){
+      qrcodeDiv.innerHTML = "";
+      downloadQRBtn.style.display = "none";
+    }
+
+    // --- Dealers rendering & quick order ---
+    function renderDealers(){
+      const grid = document.getElementById("dealerGrid");
+      grid.innerHTML = "";
+      for(const d of data.dealers){
+        const card = document.createElement("div");
+        card.className = "dealer-card";
+        card.innerHTML = `<h4>${escapeHtml(d.name)}</h4>
+          <div class="dealer-meta">${escapeHtml(d.category)}</div>
+          <div class="tiny muted">${escapeHtml(d.address)}</div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="btn btn-outline" onclick='openDealer("${d.id}")'>View</button>
+            <a class="btn btn-outline" href="tel:${d.phone}">Call</a>
+          </div>`;
+        grid.appendChild(card);
+      }
+    }
+
+    let activeDealer = null;
+    function openDealer(id){
+      const d = data.dealers.find(x=>x.id===id);
+      if(!d) return;
+      activeDealer = d;
+      document.getElementById("dealerName").textContent = d.name;
+      document.getElementById("dealerDetails").innerHTML = `<div><strong>Phone:</strong> ${escapeHtml(d.phone)}</div><div><strong>Email:</strong> ${escapeHtml(d.email)}</div><div style="margin-top:6px">${escapeHtml(d.address)}</div>`;
+      document.getElementById("dealerModal").classList.add("show");
+    }
+    function closeDealerModal(){ document.getElementById("dealerModal").classList.remove("show"); }
+
+    function placeQuickOrder(){
+      const product = document.getElementById("orderProduct").value.trim();
+      const qty = Number(document.getElementById("orderQty").value);
+      if(!product || !qty) return alert("Enter product and quantity.");
+      if(!activeDealer) return alert("No dealer selected.");
+      // Create a pre-order for the dealer (so dealer can accept)
+      const preorder = {
+        id: idGen(),
+        timestamp: new Date().toISOString(),
+        customer: `Dealer Order: ${activeDealer.name}`,
+        product,
+        qty,
+        phone: activeDealer.phone || "",
+        note: `Quick order placed to dealer ${activeDealer.name}`,
+        fromDealer: true
+      };
+      data.preorders.unshift(preorder);
+      saveData();
+      renderPreorders();
+      // generate QR containing the order
+      const text = `PRE-ORDER (Dealer):\nDealer: ${activeDealer.name}\nProduct: ${product}\nQty: ${qty}\nPhone: ${activeDealer.phone || ""}`;
+      generateQRFromText(text);
+      closeDealerModal();
+      alert("Quick preorder created & QR generated.");
+    }
+
+    // --- Pre-orders: create, render, export, delete, QR ---
+    function createPreorder(){
+      const name = document.getElementById("custName").value.trim();
+      const prod = document.getElementById("custProduct").value.trim();
+      const qty = Number(document.getElementById("custQty").value);
+      const phone = document.getElementById("custPhone").value.trim();
+      const note = document.getElementById("custNote").value.trim();
+      if(!name || !prod || !qty) return alert("Please fill customer name, product, and quantity.");
+      const po = {
+        id: idGen(),
+        timestamp: new Date().toISOString(),
+        customer: name,
+        product: prod,
+        qty,
+        phone,
+        note
+      };
+      data.preorders.unshift(po);
+      saveData();
+      renderPreorders();
+      alert("Pre-order saved.");
+    }
+
+    function renderPreorders(){
+      preordersBody.innerHTML = "";
+      if(!data.preorders || !data.preorders.length){
+        preordersBody.innerHTML = `<tr><td colspan="6" class="tiny muted" style="padding:12px;text-align:center">No pre-orders yet.</td></tr>`;
+        return;
+      }
+      for(const p of data.preorders){
+        const tr = document.createElement("tr");
+        const when = new Date(p.timestamp).toLocaleString();
+        tr.innerHTML = `<td>${escapeHtml(when)}</td>
+                        <td>${escapeHtml(p.customer)}</td>
+                        <td>${escapeHtml(p.product)}</td>
+                        <td>${escapeHtml(String(p.qty))}</td>
+                        <td>${escapeHtml(p.phone || "")}</td>
+                        <td>
+                          <div style="display:flex;gap:6px;align-items:center">
+                            <button class="btn btn-outline" onclick='generateQRForPreorder("${p.id}")'> ⛶ QR</button>
+                            <button class="btn btn-outline" onclick='downloadQRForPreorder("${p.id}")'>⬇️ Download</button>
+                            <button class="btn btn-outline" onclick='deletePreorder("${p.id}")'>❌ Delete</button>
+                          </div>
+                        </td>`;
+        preordersBody.appendChild(tr);
+      }
+    }
+
+    function generatePreorderQRFromInputs(){
+      const name = document.getElementById("custName").value.trim();
+      const prod = document.getElementById("custProduct").value.trim();
+      const qty = document.getElementById("custQty").value.trim();
+      const phone = document.getElementById("custPhone").value.trim();
+      const note = document.getElementById("custNote").value.trim();
+      if(!name || !prod || !qty) return alert("Fill name/product/qty to generate QR.");
+      const text = `PRE-ORDER:\nCustomer: ${name}\nProduct: ${prod}\nQty: ${qty}${phone?`\nPhone: ${phone}`:""}${note?`\nNote: ${note}`:""}`;
+      generateQRFromText(text);
+    }
+
+    function generateQRForPreorder(id){
+      const p = data.preorders.find(x=>x.id===id);
+      if(!p) return alert("Preorder not found");
+      const text = `PRE-ORDER:\nWhen: ${new Date(p.timestamp).toLocaleString()}\nCustomer: ${p.customer}\nProduct: ${p.product}\nQty: ${p.qty}${p.phone?`\nPhone: ${p.phone}`:""}${p.note?`\nNote: ${p.note}`:""}`;
+      generateQRFromText(text);
+    }
+
+    function downloadQRForPreorder(id){
+      generateQRForPreorder(id);
+      // wait a small moment for QR to render, then download
+      setTimeout(()=> downloadQR(), 350);
+    }
+
+    function deletePreorder(id){
+      if(!confirm("Delete this pre-order?")) return;
+      data.preorders = data.preorders.filter(x=>x.id!==id);
+      saveData();
+      renderPreorders();
+    }
+
+    function exportPreordersCSV(){
+      if(!data.preorders.length) return alert("No pre-orders to export.");
+      const rows = [["id","timestamp","customer","product","qty","phone","note"]];
+      for(const p of data.preorders) rows.push([p.id, p.timestamp, p.customer, p.product, p.qty, p.phone || "", p.note || ""]);
+      const csv = rows.map(r=>r.map(cell => `"${String(cell).replace(/"/g,'""')}"`).join(",")).join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "preorders_export.csv";
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    function clearPreordersConfirm(){
+      if(!data.preorders.length) return alert("No pre-orders to clear.");
+      if(confirm("Clear all pre-orders? This cannot be undone.")){
+        data.preorders = [];
+        saveData();
+        renderPreorders();
+        clearQR();
+      }
+    }
+
+    // --- Dark mode toggle ---
+    const darkToggle = document.getElementById("darkToggle");
+    darkToggle.addEventListener("change", (e) => {
+      document.body.setAttribute("data-theme", e.target.checked ? "dark" : "light");
+      localStorage.setItem("theme_pref", e.target.checked ? "dark" : "light");
+    });
+
+    function applySavedTheme(){
+      const pref = localStorage.getItem("theme_pref");
+      const on = pref === "dark";
+      darkToggle.checked = on;
+      document.body.setAttribute("data-theme", on ? "dark" : "light");
+    }
+
+    function logout(){ if(confirm("Logout now?")) window.location.href = "index.html"; }
+
+    // --- Init on load ---
+    window.addEventListener("load", () => {
+      loadData();
+      applySavedTheme();
+      renderDealers();
+      renderTable();
+      renderPreorders();
+
+      // handle click outside modal to close
+      document.querySelectorAll(".modal").forEach(mod => {
+        mod.addEventListener("click", (ev) => { if(ev.target === mod) mod.classList.remove("show"); });
+      });
+
+      // preview image remove
+      pPreview.addEventListener("click", ()=>{ if(confirm("Remove preview image?")) { pPreview.src=""; pPreview.style.display="none"; }});
+
+      // initial save if none
+      if(!localStorage.getItem(STORAGE_KEY)) saveData();
+    });
+
+    // small helper: ensure older data keys are present and saved
+    (function upgradeDataIfNeeded(){
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw){
+        try {
+          const parsed = JSON.parse(raw);
+          if(!parsed.preorders){ parsed.preorders = []; localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed)); }
+        } catch(e){}
+      }
+    })();
+
+  </script>
+</body>
+</html>

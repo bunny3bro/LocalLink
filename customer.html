@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="icon" type="image/x-icon" href="locallink.ico">
+  <title>Customer Dashboard - LocalLink (Upgraded)</title>
+
+  <!-- QR and PDF libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <style>
+    /* ============================
+       Base & Reset
+       ============================ */
+    :root{
+      --bg: #f8fafc;
+      --panel: #ffffff;
+      --muted: #64748b;
+      --accent: #4f46e5;
+      --accent-2: #7c3aed;
+      --success: #16a34a;
+      --danger: #ef4444;
+      --glass: rgba(255,255,255,0.6);
+      --shadow: 0 6px 18px rgba(2,6,23,0.06);
+      --text: #0f1724;
+    }
+    :root[data-theme="dark"]{
+      --bg: #071029;
+      --panel: #0b1220;
+      --muted: #9aa7bd;
+      --accent: #8b5cf6;
+      --accent-2: #5b21b6;
+      --success: #16a34a;
+      --danger: #ef6666;
+      --glass: rgba(255,255,255,0.02);
+      --shadow: 0 10px 30px rgba(0,0,0,0.6);
+      --text: #e6eef8;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:"Segoe UI",Roboto,system-ui,-apple-system,Arial,sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; }
+
+    /* ============================
+       Top Navbar / Header
+       ============================ */
+    .navbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 64px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+      background: linear-gradient(90deg, rgba(255,255,255,0.6), rgba(255,255,255,0.4));
+      backdrop-filter: blur(6px);
+      z-index: 1200;
+    }
+    :root[data-theme="dark"] .navbar { background: rgba(8,10,18,0.85); border-bottom-color: rgba(255,255,255,0.04); }
+
+    .nav-inner {
+      width: 100%;
+      max-width: 1400px;
+      padding: 12px 20px;
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+    .brand { display:flex; gap:12px; align-items:center; }
+    .brand h2 { margin:0; font-size:18px; color:var(--accent); letter-spacing:0.2px; }
+    .brand .sub { font-size:12px; color:var(--muted); margin-top:2px; }
+
+    .nav-actions { margin-left:auto; display:flex; gap:12px; align-items:center; }
+    .nav-username { color:var(--muted); font-weight:600; margin-right:6px; }
+
+    .btn {
+      padding:8px 12px;
+      border-radius:8px; border:none; cursor:pointer; font-weight:700;
+      box-shadow: var(--shadow);
+    }
+    .btn-logout { background: var(--danger); color: white; }
+    .btn-outline { background: transparent; border:1px solid rgba(0,0,0,0.06); color:var(--text); }
+    .btn-primary { background: var(--accent); color: white; }
+
+    /* Theme toggle (pill with emoji) */
+    .theme-pill {
+      width:56px;height:30px;border-radius:999px;border:2px solid rgba(0,0,0,0.06);display:flex;align-items:center;padding:3px;cursor:pointer;
+      background:var(--panel);
+    }
+    :root[data-theme="dark"] .theme-pill { border-color: rgba(255,255,255,0.06); }
+    .theme-knob { width:24px;height:25px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;transition:transform .28s cubic-bezier(.2,.9,.3,1) }
+    .theme-pill.light .theme-knob { transform: translateX(0); }
+    .theme-pill.dark .theme-knob { transform: translateX(26px); }
+
+    /* ============================
+       Layout: Sidebar + Content
+       ============================ */
+    .page {
+      display:flex;
+      gap:20px;
+      max-width:1400px;
+      margin: 80px auto 40px; /* header height + spacing */
+      padding: 0 20px;
+    }
+    .sidebar {
+      width: 280px;
+      background: var(--panel);
+      border-radius: 12px;
+      padding: 18px;
+      border: 1px solid rgba(0,0,0,0.04);
+      box-shadow: var(--shadow);
+      flex-shrink:0;
+      height: calc(100vh - 120px);
+      overflow:auto;
+    }
+    :root[data-theme="dark"] .sidebar { border-color: rgba(255,255,255,0.04); }
+
+    .sidebar .logo { font-size:20px; color:var(--accent); font-weight:800; display:flex; gap:8px; align-items:center; }
+    .sidebar .welcome { color:var(--muted); font-size:13px; margin-top:4px; }
+
+    .menu { margin-top:18px; display:flex; flex-direction:column; gap:8px; }
+    .menu-item {
+      display:flex; align-items:center; gap:12px; padding:12px; border-radius:10px; cursor:pointer; color:var(--text);
+      transition: background .15s, color .15s, transform .12s;
+    }
+    .menu-item:hover { background: rgba(0,0,0,0.03); transform: translateY(-2px); }
+    .menu-item.active { background: linear-gradient(90deg,var(--accent),var(--accent-2)); color: white; box-shadow: 0 10px 30px rgba(99,102,241,0.12) }
+
+    .menu-icon { width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center; background: #f1f5f9; color: var(--accent); font-size:18px; }
+    :root[data-theme="dark"] .menu-icon { background: rgba(255,255,255,0.04); color: var(--accent-2); }
+
+    /* Main content area */
+    .content { flex:1; min-height: calc(100vh - 120px); display:flex; flex-direction:column; gap:18px; }
+    .panel {
+      background: var(--panel);
+      border-radius: 12px;
+      padding: 18px;
+      border: 1px solid rgba(0,0,0,0.04);
+      box-shadow: var(--shadow);
+    }
+    :root[data-theme="dark"] .panel { border-color: rgba(255,255,255,0.04); }
+
+    .section-title { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; }
+    .section-title h1 { margin:0; font-size:1.25rem; color:var(--accent); }
+    :root[data-theme="dark"] .section-title h1 { color: #93c5fd; }
+
+    /* Stats grid */
+    .stats-grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:6px; }
+    .stat { padding:12px; border-radius:10px; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); }
+    .stat h3 { margin:0; font-size:20px; }
+    .stat p { margin:4px 0 0 0; color:var(--muted); font-size:13px }
+
+    /* Activity list */
+    .activity-list { display:flex; flex-direction:column; gap:10px; margin-top:12px; }
+    .activity-item { display:flex; gap:12px; align-items:flex-start; padding:10px; border-radius:8px; background: rgba(0,0,0,0.02) }
+    :root[data-theme="dark"] .activity-item { background: rgba(255,255,255,0.02); }
+
+    /* Shops grid */
+    .shops-grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(260px,1fr)); gap:12px; margin-top:12px; }
+    .shop-card { display:flex; gap:12px; padding:12px; border-radius:10px; align-items:center; }
+    .shop-image { font-size:28px; width:68px; height:68px; border-radius:10px; display:flex; align-items:center; justify-content:center; background:#fff; box-shadow:var(--shadow); }
+    .shop-info h3 { margin:0; }
+    .shop-meta { color:var(--muted); font-size:13px; margin-top:4px; }
+
+    /* Orders list (detailed cards) */
+    .orders-list { display:flex; flex-direction:column; gap:14px; margin-top:8px; }
+    .order-card {
+      display:flex; flex-direction:column; gap:8px; padding:14px; border-radius:10px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border:1px solid rgba(0,0,0,0.04);
+    }
+    :root[data-theme="dark"] .order-card { border-color: rgba(255,255,255,0.04); }
+
+    .order-top { display:flex; align-items:center; gap:12px; justify-content:space-between; }
+    .order-meta { display:flex; flex-direction:column; gap:4px; }
+    .order-id { font-weight:800; color:var(--accent); }
+    .order-status { padding:6px 10px; border-radius:999px; font-weight:700; font-size:12px; }
+    .status-ordered { background:#f3f4f6; color:#374151 }
+    .status-packed { background:#fef3c7; color:#92400e }
+    .status-shipped { background:#dbeafe; color:#1e40af }
+    .status-delivered { background:#dcfce7; color:#166534 }
+
+    .order-body { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+    .order-detail { min-width:180px; }
+
+    /* Progress tracker */
+    .progress { display:flex; gap:10px; align-items:center; width:100%; margin-top:6px; }
+    .step {
+      flex:1; position:relative; text-align:center; font-size:13px; color:var(--muted);
+    }
+    .step .dot { width:18px;height:18px;border-radius:50%;margin:auto;background:#e6e6e6; margin-bottom:6px; }
+    .step.active .dot { background: var(--accent); box-shadow: 0 6px 16px rgba(79,70,229,0.14) }
+    .step.active .label { color:var(--accent); font-weight:700; }
+
+    /* Buttons in order */
+    .order-actions { display:flex; gap:8px; margin-left:auto; align-items:center; }
+
+    .small { font-size:13px; padding:6px 10px; border-radius:8px; }
+    .btn-qr { background:var(--accent); color:white; }
+    .btn-pdf { background:var(--success); color:white; }
+    .btn-track { background:#f59e0b; color:white; }
+    .btn-advance { background:#10b981; color:white; }
+
+    /* Favorites & profile styles left as original */
+    .favorites-grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap:12px; margin-top:12px; }
+
+    /* Modal (QR) */
+    .modal { display:none; position: fixed; inset:0; background: rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index:1500; }
+    .modal.open { display:flex; }
+    .modal-card { background:var(--panel); padding:14px; border-radius:10px; width:320px; text-align:center; border:1px solid rgba(0,0,0,0.06); }
+    :root[data-theme="dark"] .modal-card { border-color: rgba(255,255,255,0.04); }
+
+    /* Responsive */
+    @media (max-width: 980px) {
+      .page { margin: 96px 10px 20px; flex-direction: column; }
+      .sidebar { width:100%; height:auto; order:2; }
+      .content { order:1; }
+    }
+
+    /* Tiny helpers */
+    .muted { color:var(--muted); }
+    .right { margin-left:auto; }
+    .flex { display:flex; align-items:center; gap:8px; }
+    .gap4 { gap:4px; }
+    input, select, textarea { padding:8px 10px; border-radius:8px; border:1px solid #e6eef8; background:transparent; color:inherit; }
+    label { font-size:13px; color:var(--muted); }
+    .form-row { display:flex; gap:8px; margin:8px 0; align-items:center; }
+    .top-actions { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  </style>
+</head>
+<body>
+  <!-- NAVBAR -->
+  <div class="navbar" role="navigation" aria-label="Main navigation">
+    <div class="nav-inner">
+      <div class="brand">
+        <div style="font-size:20px">🔗</div>
+        <div>
+          <h2>LocalLink</h2>
+          <div class="sub">Customer Dashboard</div>
+        </div>
+      </div>
+
+      <div class="nav-actions">
+        <div class="nav-username">👋 Welcome, Bunny</div>
+
+        <!-- Theme pill -->
+        <div id="themePill" class="theme-pill light" title="Toggle dark mode" role="button" tabindex="0" aria-pressed="false" aria-label="Toggle theme">
+          <div id="themeKnob" class="theme-knob">☀️</div>
+        </div>
+
+        <button class="btn btn-outline" onclick="goHome()">Home</button>
+        <button class="btn btn-logout" onclick="logout()">Logout</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE LAYOUT -->
+  <div class="page" id="pageRoot">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" aria-label="Sidebar">
+      <div class="logo">
+        <div style="font-size:18px">🔗</div>
+        <div>
+          <div style="font-weight:800">LocalLink</div>
+          <div class="welcome muted">Bunny G · Member</div>
+        </div>
+      </div>
+
+      <nav class="menu" aria-label="Main menu">
+        <div class="menu-item active" data-section="overview" onclick="switchSection(event)">
+          <div class="menu-icon">📊</div>
+          <div>
+            <div style="font-weight:700">Overview</div>
+            <div class="muted" style="font-size:12px">Quick stats & activity</div>
+          </div>
+        </div>
+
+        <div class="menu-item" data-section="shops" onclick="switchSection(event)">
+          <div class="menu-icon">🏪</div>
+          <div>
+            <div style="font-weight:700">Local Shops</div>
+            <div class="muted" style="font-size:12px">Browse nearby shops</div>
+          </div>
+        </div>
+
+        <div class="menu-item" data-section="orders" onclick="switchSection(event)">
+          <div class="menu-icon">📦</div>
+          <div>
+            <div style="font-weight:700">My Orders</div>
+            <div class="muted" style="font-size:12px">Track & manage</div>
+          </div>
+        </div>
+
+        <div class="menu-item" data-section="favorites" onclick="switchSection(event)">
+          <div class="menu-icon">❤️</div>
+          <div>
+            <div style="font-weight:700">Favorites</div>
+            <div class="muted" style="font-size:12px">Saved shops</div>
+          </div>
+        </div>
+
+        <div class="menu-item" data-section="profile" onclick="switchSection(event)">
+          <div class="menu-icon">⚙️</div>
+          <div>
+            <div style="font-weight:700">Profile</div>
+            <div class="muted" style="font-size:12px">Manage account</div>
+          </div>
+        </div>
+      </nav>
+
+      <div style="margin-top:14px;border-top:1px dashed rgba(0,0,0,0.04);padding-top:12px">
+        <div style="font-size:13px;color:var(--muted)">Need help?</div>
+        <div style="margin-top:8px">
+          <button class="btn btn-outline" onclick="openHelp()">Help & Support</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- CONTENT -->
+    <main class="content" role="main">
+      <!-- OVERVIEW -->
+      <section id="overview" class="panel section active">
+        <div class="section-title">
+          <h1>Welcome back, Bunny! 👋</h1>
+          <div class="top-actions">
+            <button class="btn btn-primary" onclick="refreshAll()">Refresh</button>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat panel">
+            <h3 id="statOrders">0</h3>
+            <p>Total Orders 🛒</p>
+          </div>
+          <div class="stat panel">
+            <h3 id="statSpent">₹0</h3>
+            <p>Total Spent 💰</p>
+          </div>
+          <div class="stat panel">
+            <h3 id="statReviews">0</h3>
+            <p>Reviews 🌟</p>
+          </div>
+          <div class="stat panel">
+            <h3 id="statFavorites">0</h3>
+            <p>Favorites ❤️</p>
+          </div>
+        </div>
+
+        <div class="activity-section panel">
+          <h3 style="margin:0 0 10px 0">Recent Activity</h3>
+          <div id="activityList" class="activity-list">
+            <!-- populated dynamically -->
+          </div>
+        </div>
+      </section>
+
+      <!-- SHOPS -->
+      <section id="shops" class="panel section" style="display:none">
+        <div class="section-title">
+          <h1>Local Shops 🏪</h1>
+          <div class="muted">Discover neighbourhood sellers</div>
+        </div>
+
+        <div class="shops-grid" id="shopsGrid">
+          <!-- populated dynamically -->
+        </div>
+      </section>
+
+      <!-- ORDERS -->
+      <section id="orders" class="panel section" style="display:none">
+        <div class="section-title">
+          <h1>My Orders 📦</h1>
+          <div class="flex gap4">
+            <label class="muted" style="font-size:13px">Filter:</label>
+            <select id="orderFilter" onchange="renderOrders()">
+              <option value="all">All</option>
+              <option value="ordered">Ordered</option>
+              <option value="packed">Packed</option>
+              <option value="shipped">Shipped</option>
+              <option value="delivered">Delivered</option>
+            </select>
+
+            <button class="btn btn-outline" onclick="exportOrdersCSV()">Export CSV</button>
+            <label class="btn btn-imp" style="padding:8px 10px; display:inline-flex; align-items:center; gap:6px; cursor:pointer">
+              Import CSV
+              <input id="ordersImport" type="file" accept=".csv" style="display:none" onchange="importOrdersCSV(event)" />
+            </label>
+          </div>
+        </div>
+
+        <div id="ordersList" class="orders-list">
+          <!-- orders rendered here -->
+        </div>
+      </section>
+
+      <!-- FAVORITES -->
+      <section id="favorites" class="panel section" style="display:none">
+        <div class="section-title">
+          <h1>My Favorites ❤️</h1>
+          <div class="muted">Saved shops & services</div>
+        </div>
+
+        <div class="favorites-grid" id="favoritesGrid">
+          <!-- populated dynamically -->
+        </div>
+      </section>
+
+      <!-- PROFILE -->
+      <section id="profile" class="panel section" style="display:none">
+        <div class="section-title">
+          <h1>Profile Settings ⚙️</h1>
+          <div class="muted">Manage your information</div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="panel">
+            <h3>Personal</h3>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <label>Full name</label>
+              <input id="profileName" type="text" value="Bunny G" />
+              <label>Email</label>
+              <input id="profileEmail" type="email" value="bunny.g@gmail.com" />
+              <label>Phone</label>
+              <input id="profilePhone" type="tel" value="+91 98765 43210" />
+              <div style="display:flex;gap:8px;margin-top:8px">
+                <button class="btn btn-primary" onclick="saveProfile()">Save</button>
+                <button class="btn btn-outline" onclick="resetProfile()">Reset</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <h3>Preferences</h3>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <div>
+                  <div style="font-weight:700">Email notifications</div>
+                  <div class="muted" style="font-size:13px">Receive promotional & order emails</div>
+                </div>
+                <label class="toggle">
+                  <input id="prefEmail" type="checkbox" checked />
+                  <span class="slider"></span>
+                </label>
+              </div>
+
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <div>
+                  <div style="font-weight:700">SMS notifications</div>
+                  <div class="muted" style="font-size:13px">Order status via SMS</div>
+                </div>
+                <label class="toggle">
+                  <input id="prefSMS" type="checkbox" />
+                  <span class="slider"></span>
+                </label>
+              </div>
+
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <div>
+                  <div style="font-weight:700">Location services</div>
+                  <div class="muted" style="font-size:13px">Improve nearby results</div>
+                </div>
+                <label class="toggle">
+                  <input id="prefLoc" type="checkbox" checked />
+                  <span class="slider"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+    </main>
+  </div>
+
+  <!-- QR Modal -->
+  <div id="qrModal" class="modal" aria-hidden="true">
+    <div class="modal-card">
+      <h3 id="qrTitle">Order QR Code</h3>
+      <div id="qrContainer" style="margin:10px 0"></div>
+      <a id="qrDownload" class="btn btn-qr" download="order_qr.png" style="display:inline-block;margin-bottom:8px">⬇️ Download QR</a>
+      <div><button class="btn btn-outline" onclick="closeQR()">Close</button></div>
+    </div>
+  </div>
+
+  <!-- Hidden invoice generation canvas (created on demand) -->
+  <canvas id="hiddenCanvas" style="display:none"></canvas>
+
+  <script>
+  /**********************************************************************
+   * LocalLink Customer Dashboard - JavaScript
+   * Features:
+   *  - Dark mode (persistent)
+   *  - Orders: dynamic rendering, QR generation & download
+   *  - Invoice PDF generation (jsPDF)
+   *  - Live tracking UI (manual + simulated automatic updates)
+   *  - CSV import/export for orders
+   *  - Keeps original UI behavior / sections
+   **********************************************************************/
+
+  // ---------- Data model & storage ----------
+  const STORAGE_KEY = "locallink_customer_v3";
+  let store = {
+    orders: [],
+    favorites: [],
+    shops: [],
+    activities: [],
+    profile: { name: "Bunny G", email: "bunny.g@gmail.com", phone: "+91 98765 43210" }
+  };
+
+  // status codes: 0=ordered, 1=packed, 2=shipped, 3=delivered
+  const STATUS_LABELS = ["ordered","packed","shipped","delivered"];
+
+  // simulated updates handler
+  let simulationInterval = null;
+
+  // ---------- helpers ----------
+  function idGen(){ return 'LL' + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+  function formatDate(iso){ const d = new Date(iso); return d.toLocaleString(); }
+  function money(v){ return '₹' + Number(v).toLocaleString('en-IN'); }
+  function saveStore(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(store)); updateStatsAndUI(); }
+  function loadStore(){
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      try { store = JSON.parse(raw); }
+      catch(e){ console.warn("Failed parse store, resetting"); setDefaultDemo(); saveStore(); }
+    } else {
+      setDefaultDemo();
+      saveStore();
+    }
+  }
+
+  function setDefaultDemo(){
+    store.orders = [
+      { id: "ORD1001", timestamp: new Date().toISOString(), customer: "John Doe", products: "Apples (2kg), Milk (1L)", qty: 3, price: 250, status: 1 },
+      { id: "ORD1002", timestamp: new Date().toISOString(), customer: "Meera Singh", products: "Rice (5kg)", qty: 1, price: 320, status: 0 },
+      { id: "ORD1003", timestamp: new Date().toISOString(), customer: "Ravi Kumar", products: "Paneer (1kg), Yogurt (2)", qty: 3, price: 420, status: 2 }
+    ];
+
+    store.shops = [
+      { id: "S1", name: "Sharma Electronics", category: "Electronics", rating: 4.8, reviews: 124, distance: "0.5 km" },
+      { id: "S2", name: "Fresh Grocers", category: "Groceries", rating: 4.2, reviews: 89, distance: "1.2 km" },
+      { id: "S3", name: "Style Hub", category: "Clothing", rating: 4.5, reviews: 67, distance: "0.8 km" }
+    ];
+
+    store.favorites = [ store.shops[0], store.shops[1] ];
+    store.activities = [
+      { when: new Date().toISOString(), text: "Order ORD1001 delivered from Sharma Electronics" },
+      { when: new Date(Date.now()-3600*1000).toISOString(), text: "Review posted for Sharma Electronics" }
+    ];
+    store.profile = { name: "Bunny G", email: "bunny.g@gmail.com", phone: "+91 98765 43210" };
+  }
+
+  // ---------- Rendering functions ----------
+  function updateStatsAndUI(){
+    // stats
+    document.getElementById('statOrders').textContent = store.orders.length;
+    const total = store.orders.reduce((s,o)=> s + (Number(o.price)||0), 0);
+    document.getElementById('statSpent').textContent = money(total);
+    document.getElementById('statReviews').textContent = 8; // static placeholder - could be derived from store
+    document.getElementById('statFavorites').textContent = store.favorites.length;
+
+    // activity list
+    const act = document.getElementById('activityList');
+    act.innerHTML = '';
+    if(store.activities.length === 0) act.innerHTML = `<div class="muted">No recent activity</div>`;
+    else {
+      store.activities.slice(0,8).forEach(a => {
+        const d = document.createElement('div'); d.className = 'activity-item';
+        d.innerHTML = `<div style="font-size:20px">📦</div><div style="flex:1"><div style="font-weight:700">${a.text}</div><div class="muted" style="font-size:12px">${formatDate(a.when)}</div></div>`;
+        act.appendChild(d);
+      });
+    }
+
+    // shops grid
+    const shopsGrid = document.getElementById('shopsGrid');
+    shopsGrid.innerHTML = '';
+    for(const s of store.shops){
+      const card = document.createElement('div'); card.className = 'shop-card panel';
+      card.innerHTML = `
+        <div class="shop-image">${chooseShopEmoji(s.category)}</div>
+        <div style="flex:1">
+          <h3>${escapeHtml(s.name)}</h3>
+          <div class="shop-meta">${escapeHtml(s.category)} · <strong>${s.rating}</strong> (${s.reviews} reviews)</div>
+          <div class="shop-meta muted">📍 ${escapeHtml(s.distance)}</div>
+          <div style="margin-top:8px;display:flex;gap:8px">
+            <button class="btn btn-primary" onclick='visitShop("${s.id}")'>Visit Shop</button>
+            <button class="btn btn-outline" onclick='toggleFavorite("${s.id}")'>${isFavorite(s.id) ? '★ Favorited' : '♡ Favorite'}</button>
+          </div>
+        </div>
+      `;
+      shopsGrid.appendChild(card);
+    }
+
+    // favorites grid
+    const favGrid = document.getElementById('favoritesGrid');
+    favGrid.innerHTML = '';
+    for(const f of store.favorites){
+      const c = document.createElement('div'); c.className = 'panel';
+      c.innerHTML = `<div style="display:flex;align-items:center;gap:12px"><div style="font-size:28px">${chooseShopEmoji(f.category)}</div>
+        <div><h3 style="margin:0">${escapeHtml(f.name)}</h3><div class="muted">${escapeHtml(f.category)}</div></div>
+        </div><div style="margin-top:10px"><button class="btn btn-primary" onclick='visitShop("${f.id}")'>Visit Store</button>
+        <button class="btn btn-outline" onclick='removeFavorite("${f.id}")'>Remove</button></div>`;
+      favGrid.appendChild(c);
+    }
+
+    // orders rendering (if on orders tab)
+    renderOrders();
+  }
+
+  function chooseShopEmoji(cat){
+    cat = (cat||"").toLowerCase();
+    if(cat.includes('elect')) return '📱';
+    if(cat.includes('grocer') || cat.includes('food') || cat.includes('veget')) return '🥬';
+    if(cat.includes('clothing') || cat.includes('fashion')) return '👕';
+    if(cat.includes('pharm') || cat.includes('health')) return '💊';
+    return '🏪';
+  }
+
+  // ---------- Orders: render, actions, QR, PDF ----------
+  function renderOrders(){
+    const container = document.getElementById('ordersList');
+    container.innerHTML = '';
+    const filter = document.getElementById('orderFilter').value;
+
+    let orders = store.orders.slice();
+    if(filter !== 'all') orders = orders.filter(o => STATUS_LABELS[o.status] === filter);
+
+    if(orders.length === 0){
+      container.innerHTML = `<div class="muted">No orders found for selected filter.</div>`;
+      return;
+    }
+
+    for(const o of orders){
+      const card = document.createElement('div');
+      card.className = 'order-card';
+      card.dataset.id = o.id;
+      card.innerHTML = `
+        <div class="order-top">
+          <div class="order-meta">
+            <div class="order-id">${o.id}</div>
+            <div class="muted" style="font-size:13px">${formatDate(o.timestamp)}</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <div class="order-status ${statusClass(o.status)}">${STATUS_LABELS[o.status].toUpperCase()}</div>
+          </div>
+        </div>
+
+        <div class="order-body">
+          <div class="order-detail"><strong>Customer</strong><div>${escapeHtml(o.customer)}</div></div>
+          <div class="order-detail"><strong>Products</strong><div>${escapeHtml(o.products)}</div></div>
+          <div class="order-detail"><strong>Qty</strong><div>${o.qty}</div></div>
+          <div class="order-detail"><strong>Price</strong><div>${money(o.price)}</div></div>
+
+          <div class="order-actions">
+            <button class="small btn-qr" onclick='generateQR("${o.id}")'>Generate QR</button>
+            <button class="small btn-pdf" onclick='downloadInvoice("${o.id}")'>Invoice (PDF)</button>
+            <button class="small btn-track" onclick='openTracker("${o.id}")'>Track</button>
+            <button class="small btn-advance" onclick='advanceStatus("${o.id}")'>Advance</button>
+            <button class="small btn-outline" onclick='deleteOrder("${o.id}")'>Delete</button>
+          </div>
+        </div>
+
+        <div class="progress" style="margin-top:10px">
+          <div class="step ${o.status >= 0 ? "active":""}" data-step="0"><div class="dot"></div><div class="label">Ordered</div></div>
+          <div class="step ${o.status >= 1 ? "active":""}" data-step="1"><div class="dot"></div><div class="label">Packed</div></div>
+          <div class="step ${o.status >= 2 ? "active":""}" data-step="2"><div class="dot"></div><div class="label">Shipped</div></div>
+          <div class="step ${o.status >= 3 ? "active":""}" data-step="3"><div class="dot"></div><div class="label">Delivered</div></div>
+        </div>
+      `;
+      container.appendChild(card);
+    }
+  }
+
+  function statusClass(status){
+    if(status===0) return 'status-ordered';
+    if(status===1) return 'status-packed';
+    if(status===2) return 'status-shipped';
+    if(status===3) return 'status-delivered';
+    return '';
+  }
+
+  // Advance order status (manual)
+  function advanceStatus(orderId){
+    const idx = store.orders.findIndex(o=>o.id===orderId);
+    if(idx === -1) return alert('Order not found');
+    if(store.orders[idx].status < 3){
+      store.orders[idx].status++;
+      store.activities.unshift({ when: new Date().toISOString(), text: `Order ${orderId} advanced to ${STATUS_LABELS[store.orders[idx].status]}` });
+      saveStore();
+      renderOrders();
+      notify(`Order ${orderId}`, `Status: ${STATUS_LABELS[store.orders[idx].status]}`);
+    } else {
+      alert('Order already delivered.');
+    }
+  }
+
+  // delete order
+  function deleteOrder(orderId){
+    if(!confirm('Delete order ' + orderId + '?')) return;
+    store.orders = store.orders.filter(o=>o.id!==orderId);
+    store.activities.unshift({ when: new Date().toISOString(), text: `Order ${orderId} deleted` });
+    saveStore();
+    renderOrders();
+  }
+
+  // open tracker modal (simple) — here we just scroll into view & highlight steps
+  function openTracker(orderId){
+    const card = document.querySelector(`.order-card[data-id="${orderId}"]`);
+    if(!card) return alert('Order not found');
+    card.scrollIntoView({behavior:'smooth', block:'center'});
+    // tiny highlight
+    card.style.boxShadow = "0 8px 40px rgba(79,70,229,0.12)";
+    setTimeout(()=> card.style.boxShadow = "", 2000);
+  }
+
+  // ---------- QR & Invoice ----------
+  const qrModal = document.getElementById('qrModal');
+  const qrContainer = document.getElementById('qrContainer');
+  const qrDownload = document.getElementById('qrDownload');
+
+  function generateQR(orderId){
+    const order = store.orders.find(o=>o.id===orderId);
+    if(!order) return alert('Order not found');
+    qrContainer.innerHTML = '';
+    const data = `Order ID: ${order.id}\nWhen: ${formatDate(order.timestamp)}\nCustomer: ${order.customer}\nProducts: ${order.products}\nQty: ${order.qty}\nPrice: ${order.price}`;
+    new QRCode(qrContainer, { text: data, width: 220, height: 220, correctLevel: QRCode.CorrectLevel.H });
+    // set download link after short delay
+    setTimeout(()=>{
+      const canvas = qrContainer.querySelector('canvas');
+      if(canvas){
+        qrDownload.href = canvas.toDataURL('image/png');
+        qrDownload.download = `${order.id}_qr.png`;
+        qrDownload.style.display = "inline-block";
+      } else {
+        // fallback if library rendered as table
+        qrDownload.style.display = "none";
+      }
+    }, 250);
+    document.getElementById('qrTitle').textContent = `QR: ${order.id}`;
+    openModal(qrModal);
+  }
+
+  function closeQR(){ closeModal(qrModal); qrContainer.innerHTML = ''; }
+
+  // Invoice PDF using jsPDF
+  async function downloadInvoice(orderId){
+    const order = store.orders.find(o=>o.id===orderId);
+    if(!order) return alert('Order missing');
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    const margin = 40;
+    let y = 40;
+    doc.setFontSize(18);
+    doc.text("LocalLink Invoice", margin, y);
+    y += 28;
+    doc.setFontSize(12);
+    doc.text(`Order ID: ${order.id}`, margin, y); y+=18;
+    doc.text(`Date: ${formatDate(order.timestamp)}`, margin, y); y+=18;
+    doc.text(`Customer: ${order.customer}`, margin, y); y+=18;
+    doc.text(`Products: ${order.products}`, margin, y); y+=18;
+    doc.text(`Quantity: ${order.qty}`, margin, y); y+=18;
+    doc.text(`Total Price: ${money(order.price)}`, margin, y); y+=28;
+    doc.setFontSize(11);
+    doc.text("Thank you for shopping with LocalLink!", margin, y);
+    // Save
+    doc.save(`${order.id}_invoice.pdf`);
+  }
+
+  // ---------- CSV import/export ----------
+  function exportOrdersCSV(){
+    if(!store.orders.length) return alert('No orders to export');
+    const header = ['id','timestamp','customer','products','qty','price','status'];
+    const rows = store.orders.map(o => [o.id, o.timestamp, escapeCsv(o.customer), escapeCsv(o.products), o.qty, o.price, o.status]);
+    const csv = [header.join(',')].concat(rows.map(r => r.join(','))).join('\n');
+    downloadText(csv, 'orders_export.csv', 'text/csv');
+  }
+  function importOrdersCSV(e){
+    const file = e.target.files && e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const txt = ev.target.result;
+        const lines = txt.split(/\r?\n/).filter(Boolean);
+        const header = lines.shift().split(',');
+        const idx = {
+          id: header.indexOf('id'),
+          timestamp: header.indexOf('timestamp'),
+          customer: header.indexOf('customer'),
+          products: header.indexOf('products'),
+          qty: header.indexOf('qty'),
+          price: header.indexOf('price'),
+          status: header.indexOf('status')
+        };
+        let added = 0;
+        for(const line of lines){
+          const cols = parseCSVLine(line);
+          if(!cols || !cols.length) continue;
+          const order = {
+            id: cols[idx.id] || idGen(),
+            timestamp: cols[idx.timestamp] || new Date().toISOString(),
+            customer: cols[idx.customer] || 'Unknown',
+            products: cols[idx.products] || '',
+            qty: Number(cols[idx.qty]||1),
+            price: Number(cols[idx.price]||0),
+            status: Number(cols[idx.status]||0)
+          };
+          store.orders.unshift(order);
+          added++;
+        }
+        saveStore();
+        alert(`Imported ${added} orders.`);
+      } catch(err){
+        alert('Failed to import CSV: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  }
+
+  function parseCSVLine(line){
+    // very simple CSV parse supporting quoted fields
+    const res = [];
+    let cur = '', inQ=false;
+    for(let i=0;i<line.length;i++){
+      const ch = line[i];
+      if(inQ){
+        if(ch === '"' && line[i+1]==='"'){ cur += '"'; i++; continue; }
+        if(ch === '"'){ inQ=false; continue; }
+        cur += ch;
+      } else {
+        if(ch === '"'){ inQ=true; continue; }
+        if(ch === ','){ res.push(cur); cur=''; continue; }
+        cur += ch;
+      }
+    }
+    res.push(cur);
+    return res;
+  }
+
+  function escapeCsv(s = ''){
+    if(s.includes(',') || s.includes('"') || s.includes('\n')) return `"${s.replace(/"/g,'""')}"`;
+    return s;
+  }
+
+  function downloadText(text, filename, mime='text/plain'){
+    const blob = new Blob([text], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+    URL.revokeObjectURL(url); a.remove();
+  }
+
+  // ---------- Extras: favorites, shops etc ----------
+  function visitShop(shopId){ alert('Open shop: ' + shopId); }
+  function isFavorite(shopId){ return store.favorites.find(s=>s.id===shopId); }
+  function toggleFavorite(shopId){
+    const s = store.shops.find(x=>x.id===shopId); if(!s) return;
+    if(isFavorite(shopId)) removeFavorite(shopId);
+    else { store.favorites.unshift(s); store.activities.unshift({ when:new Date().toISOString(), text: `Added ${s.name} to favorites`}); saveStore(); }
+  }
+  function removeFavorite(shopId){
+    store.favorites = store.favorites.filter(x=>x.id!==shopId);
+    store.activities.unshift({ when:new Date().toISOString(), text: `Removed favorite`});
+    saveStore();
+  }
+
+  // ---------- UI Navigation ----------
+  function switchSection(ev){
+    const el = ev.currentTarget || ev.target.closest('.menu-item');
+    if(!el) return;
+    document.querySelectorAll('.menu-item').forEach(i=>i.classList.remove('active'));
+    el.classList.add('active');
+    const section = el.dataset.section;
+    document.querySelectorAll('.section').forEach(s=> s.style.display = 'none');
+    const target = document.getElementById(section);
+    if(target) target.style.display = 'block';
+  }
+
+  function goHome(){ window.location.href = 'index.html'; }
+  function logout(){ if(confirm('Logout now?')) window.location.href = 'index.html'; }
+  function openHelp(){ alert('Open help & support'); }
+
+  // ---------- Theme (dark mode) ----------
+  const themePill = document.getElementById('themePill');
+  function applyTheme(saved){
+    const root = document.documentElement;
+    if(saved === 'dark'){ root.setAttribute('data-theme','dark'); themePill.classList.remove('light'); themePill.classList.add('dark'); themePill.setAttribute('aria-pressed','true'); document.getElementById('themeKnob').textContent = '🌙'; }
+    else { root.removeAttribute('data-theme'); themePill.classList.remove('dark'); themePill.classList.add('light'); themePill.setAttribute('aria-pressed','false'); document.getElementById('themeKnob').textContent = '☀️'; }
+    localStorage.setItem('locallink_theme', saved);
+  }
+  themePill.addEventListener('click', ()=>{
+    const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+    applyTheme(current === 'dark' ? 'light' : 'dark');
+  });
+  // keyboard accessible
+  themePill.addEventListener('keydown', (e)=> { if(e.key==='Enter' || e.key===' ') { e.preventDefault(); themePill.click(); } });
+
+  function restoreTheme(){
+    const saved = localStorage.getItem('locallink_theme') || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    applyTheme(saved);
+  }
+
+  // ---------- Notifications ----------
+  function notify(title, body){
+    if(!("Notification" in window)) return;
+    if(Notification.permission === "granted"){ new Notification(title, { body }); }
+    else if(Notification.permission !== "denied"){ Notification.requestPermission().then(p => { if(p==='granted') new Notification(title, { body }); }); }
+  }
+
+  // ---------- Utilities ----------
+  function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function openModal(mod){ mod.classList.add('open'); }
+  function closeModal(mod){ mod.classList.remove('open'); }
+  function openModal(el){ el.classList.add('open'); el.setAttribute('aria-hidden','false'); }
+  function closeModal(el){ el.classList.remove('open'); el.setAttribute('aria-hidden','true'); }
+  // wrapper for QR open/close:
+  function openModal(modalEl){ modalEl.classList.add('open'); modalEl.setAttribute('aria-hidden','false'); }
+  function closeModal(modalEl){ modalEl.classList.remove('open'); modalEl.setAttribute('aria-hidden','true'); }
+
+  // ---------- Initialization & event bindings ----------
+  document.addEventListener('DOMContentLoaded', ()=>{
+    loadStore();
+    restoreTheme();
+    updateStatsAndUI();
+
+    // wire import input
+    document.getElementById('ordersImport').addEventListener('change', importOrdersCSV);
+    // show initial section: overview already visible
+
+    // wire small profile save
+    document.getElementById('profileName').value = store.profile.name || '';
+    document.getElementById('profileEmail').value = store.profile.email || '';
+    document.getElementById('profilePhone').value = store.profile.phone || '';
+
+
+    // keyboard close for QR modal
+    document.addEventListener('keydown', (e)=> {
+      if(e.key === 'Escape') {
+        const openMod = document.querySelector('.modal.open');
+        if(openMod) closeModal(openMod);
+      }
+    });
+
+    // click outside to close modals
+    document.querySelectorAll('.modal').forEach(m=>{
+      m.addEventListener('click', (ev)=> { if(ev.target === m) closeModal(m); });
+    });
+  });
+
+  // ---------- CRUD helpers for orders (add new) ----------
+  // small external utility: add order (used by other parts or remote)
+  function createOrder(customer, products, qty, price){
+    const id = 'ORD' + (1000 + Math.floor(Math.random()*9000));
+    const order = { id, timestamp: new Date().toISOString(), customer, products, qty: Number(qty), price: Number(price), status: 0 };
+    store.orders.unshift(order);
+    store.activities.unshift({ when: new Date().toISOString(), text: `Order ${id} created by ${customer}` });
+    saveStore();
+    renderOrders();
+    return order;
+  }
+
+  // expose createOrder to console for testing
+  window.createOrder = createOrder;
+
+  // ---------- Profiles ------------
+  function saveProfile(){
+    store.profile.name = document.getElementById('profileName').value || store.profile.name;
+    store.profile.email = document.getElementById('profileEmail').value || store.profile.email;
+    store.profile.phone = document.getElementById('profilePhone').value || store.profile.phone;
+    store.activities.unshift({ when: new Date().toISOString(), text: `Profile updated` });
+    saveStore();
+    alert('Profile saved.');
+  }
+  function resetProfile(){
+    document.getElementById('profileName').value = store.profile.name;
+    document.getElementById('profileEmail').value = store.profile.email;
+    document.getElementById('profilePhone').value = store.profile.phone;
+  }
+
+  // ---------- small helpers for CSV import binding ----------
+  function importOrdersCSV(ev){
+    importOrdersCSV; // placeholder (wired earlier)
+  }
+
+  // ---------- simulation controls & refresh ----------
+  function refreshAll(){ updateStatsAndUI(); renderOrders(); }
+
+  // ---------- small parsing: when user imports file via visible input (ordersImport) ----------
+  function importOrdersCSV(event){
+    const file = event.target.files && event.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e){
+      const text = e.target.result;
+      const lines = text.split(/\r?\n/).filter(Boolean);
+      if(!lines.length) return alert('Empty CSV');
+      const header = lines.shift().split(',');
+      const colIndex = {
+        id: header.indexOf('id'),
+        timestamp: header.indexOf('timestamp'),
+        customer: header.indexOf('customer'),
+        products: header.indexOf('products'),
+        qty: header.indexOf('qty'),
+        price: header.indexOf('price'),
+        status: header.indexOf('status')
+      };
+      let added = 0;
+      for(const l of lines){
+        const fields = parseCSVLine(l);
+        if(!fields || !fields.length) continue;
+        const ord = {
+          id: fields[colIndex.id] || idGen(),
+          timestamp: fields[colIndex.timestamp] || new Date().toISOString(),
+          customer: fields[colIndex.customer] || 'Unknown',
+          products: fields[colIndex.products] || '',
+          qty: Number(fields[colIndex.qty] || 1),
+          price: Number(fields[colIndex.price] || 0),
+          status: Number(fields[colIndex.status] || 0)
+        };
+        store.orders.unshift(ord);
+        added++;
+      }
+      saveStore();
+      alert(`Imported ${added} orders.`);
+      event.target.value = '';
+    };
+    reader.readAsText(file);
+  }
+
+  </script>
+</body>
+</html>
